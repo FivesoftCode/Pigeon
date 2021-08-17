@@ -127,6 +127,11 @@ public class Pigeon {
         return this;
     }
 
+    public Pigeon setRequestType(int requestType){
+        this.requestType = requestType;
+        return this;
+    }
+
     /**
      * Sets the request url.
      * @param url The url.
