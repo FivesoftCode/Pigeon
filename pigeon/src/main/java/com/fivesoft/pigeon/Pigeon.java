@@ -2,41 +2,52 @@ package com.fivesoft.pigeon;
 
 import android.app.Activity;
 
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONException;
 
 import java.util.HashMap;
 
 public class Pigeon {
 
-    private HashMap<String, Object> params = new HashMap<>();
-    private HashMap<String, Object> headers = new HashMap<>();
     private final Activity activity;
-    private int requestType = 0;
-    private RequestListener requestListener;
 
     /**
      * The GET method requests a representation of the specified resource. Requests using GET should only retrieve data.
      */
-    public static final String GET      = "GET";
+    public static final String METHOD_GET =    "GET";
     /**
      * The POST method is used to submit an entity to the specified resource, often causing a change in state or side effects on the server.
      */
-    public static final String POST     = "POST";
+    public static final String METHOD_POST =   "POST";
     /**
      * The PUT method replaces all current representations of the target resource with the request payload.
      */
-    public static final String PUT      = "PUT";
+    public static final String METHOD_PUT =    "PUT";
     /**
      * The DELETE method deletes the specified resource.
      */
-    public static final String DELETE   = "DELETE";
+    public static final String METHOD_DELETE = "DELETE";
+
+
+    public static final String CONTENT_TYPE_APP_JSON = "application/json";
+    public static final String CONTENT_TYPE_APP_X_WWW_FORM_URLENCODED = "application/x-www-form-urlencoded";
+    public static final String CONTENT_TYPE_TEXT_HTML = "text/html";
+    public static final String CONTENT_TYPE_APP_XML = "application/xml";
+    public static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
+
 
     public static final int REQUEST_PARAM = 0;
     public static final int REQUEST_BODY  = 1;
 
-    private String url = null;
-    private String tag = null;
-    private String method = GET;
+    String url = null;
+    String tag = null;
+    String method = METHOD_GET;
+    String contentType;
+    int requestType = 0;
+
+    HashMap<String, Object> params = new HashMap<>();
+    HashMap<String, Object> headers = new HashMap<>();
+    RequestListener requestListener;
 
     private Pigeon(Activity activity) {
         this.activity = activity;
@@ -131,10 +142,10 @@ public class Pigeon {
      * Sets the request method.
      * There are 4 methods available:
      * <ul>
-     *     <li>{@link #GET}</li>
-     *     <li>{@link #POST}</li>
-     *     <li>{@link #PUT}</li>
-     *     <li>{@link #DELETE}</li>
+     *     <li>{@link #METHOD_GET}</li>
+     *     <li>{@link #METHOD_POST}</li>
+     *     <li>{@link #METHOD_PUT}</li>
+     *     <li>{@link #METHOD_DELETE}</li>
      * </ul>
      * For more info about HTTP request methods check <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods">this</a>.
      * @param method The method.
@@ -143,6 +154,40 @@ public class Pigeon {
 
     public Pigeon setMethod(String method){
         this.method = method;
+        return this;
+    }
+
+    /**
+     * Sets content type of the call.
+     * @param contentType content type string. For more info visit:
+     *                   <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type">link</a>
+     * @return Current Pigeon instance.
+     */
+
+    public Pigeon setContentType(String contentType){
+        this.contentType = contentType;
+        return this;
+    }
+
+    /**
+     * Sets 'Authorization' header to 'Bearer ' + bearer.
+     * <br>
+     * <b>Warning!</b>
+     * <br>Must be called after (or without) method {@link #setHeaders(HashMap)}, otherwise
+     * authorization header will be overwritten.
+     * @param bearer your authorization bearer (Without Bearer keyword ex. 'xxxxxxxyyyyyyyzzzzzzz')
+     * @return Current Pigeon instance.
+     */
+
+    public Pigeon setAuthorizationBearer(@Nullable String bearer){
+
+        if(headers == null)
+            headers = new HashMap<>();
+
+        if(bearer == null)
+            headers.remove("Authorization");
+        else
+            headers.put("Authorization", "Bearer " + bearer);
         return this;
     }
 
@@ -163,7 +208,7 @@ public class Pigeon {
      */
 
     public void fly(){
-        RequestNetworkController.getInstance().execute(this, method, url, tag, requestListener);
+        RequestNetworkController.getInstance().execute(this);
     }
 
     public HashMap<String, Object> getParams() {

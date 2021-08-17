@@ -24,7 +24,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-import static com.fivesoft.pigeon.Pigeon.GET;
+import static com.fivesoft.pigeon.Pigeon.METHOD_GET;
 import static com.fivesoft.pigeon.Pigeon.REQUEST_PARAM;
 
 class RequestNetworkController {
@@ -82,9 +82,11 @@ private OkHttpClient getClient() {
     return client;
 }
 
-public void execute(final Pigeon pigeon, String method, String url, final String tag, final Pigeon.RequestListener requestListener) {
+void execute(Pigeon pigeon) {
     Request.Builder reqBuilder = new Request.Builder();
     Headers.Builder headerBuilder = new Headers.Builder();
+
+    final String tag = pigeon.tag;
 
     if(pigeon.getHeaders().size() > 0) {
         HashMap<String, Object> headers = pigeon.getHeaders();
@@ -95,12 +97,12 @@ public void execute(final Pigeon pigeon, String method, String url, final String
 
     try {
         if (pigeon.getRequestType() == REQUEST_PARAM) {
-            if (method.equals(GET)) {
+            if (pigeon.method.equals(METHOD_GET)) {
                 HttpUrl.Builder httpBuilder;
                 try {
-                    httpBuilder = HttpUrl.parse(url).newBuilder();
+                    httpBuilder = HttpUrl.parse(pigeon.url).newBuilder();
                 } catch (NullPointerException ne) {
-                    throw new NullPointerException("unexpected url: " + url);
+                    throw new NullPointerException("Unexpected url: " + pigeon.url);
                 }
 
                 if (pigeon.getParams().size() > 0) {
@@ -123,15 +125,15 @@ public void execute(final Pigeon pigeon, String method, String url, final String
 
                 RequestBody reqBody = formBuilder.build();
 
-                reqBuilder.url(url).headers(headerBuilder.build()).method(method, reqBody);
+                reqBuilder.url(pigeon.url).headers(headerBuilder.build()).method(pigeon.method, reqBody);
             }
         } else {
-            RequestBody reqBody = RequestBody.create(okhttp3.MediaType.parse("application/json"), new Gson().toJson(pigeon.getParams()));
+            RequestBody reqBody = RequestBody.create(new Gson().toJson(pigeon.getParams()), okhttp3.MediaType.parse(pigeon.contentType));
 
-            if (method.equals(GET)) {
-                reqBuilder.url(url).headers(headerBuilder.build()).get();
+            if (pigeon.method.equals(METHOD_GET)) {
+                reqBuilder.url(pigeon.url).headers(headerBuilder.build()).get();
             } else {
-                reqBuilder.url(url).headers(headerBuilder.build()).method(method, reqBody);
+                reqBuilder.url(pigeon.url).headers(headerBuilder.build()).method(pigeon.method, reqBody);
             }
         }
 
@@ -141,28 +143,33 @@ public void execute(final Pigeon pigeon, String method, String url, final String
             @Override
             public void onFailure(@NotNull Call call, @NotNull final IOException e) {
                 pigeon.getActivity().runOnUiThread(() -> {
-                    if(requestListener != null)
-                        requestListener.onErrorResponse(tag, e.getMessage());
+                    if(pigeon.requestListener != null)
+                        pigeon.requestListener.onErrorResponse(tag, e.getMessage());
                 });
             }
 
             @Override
-            public void onResponse(@NotNull Call call, @NotNull final Response response) throws IOException {
-                final String responseBody = response.body().string().trim();
-                pigeon.getActivity().runOnUiThread(() -> {
-                    try{
-                        if(requestListener != null)
-                            requestListener.onResponse(tag, responseBody);
-                    }catch(JSONException e){
-                        if(requestListener != null)
-                            requestListener.onErrorResponse(tag, e.toString());
-                    }
-                });
+            public void onResponse(@NotNull Call call, @NotNull final Response response) {
+                final String responseBody;
+                try {
+                    responseBody = response.body().string().trim();
+                    pigeon.getActivity().runOnUiThread(() -> {
+                        try {
+                            if (pigeon.requestListener != null)
+                                pigeon.requestListener.onResponse(tag, responseBody);
+                        } catch (JSONException e) {
+                            pigeon.requestListener.onErrorResponse(tag, e.toString());
+                        }
+                    });
+                } catch (Exception e) {
+                    if (pigeon.requestListener != null)
+                        pigeon.requestListener.onErrorResponse(tag, e.toString());
+                }
             }
         });
     } catch (Exception e) {
-        if(requestListener != null)
-            requestListener.onErrorResponse(tag, e.getMessage());
+        if(pigeon.requestListener != null)
+            pigeon.requestListener.onErrorResponse(tag, e.getMessage());
     }
 }
 }
